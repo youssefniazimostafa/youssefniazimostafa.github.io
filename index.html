@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Chelsea Tracker — Last 5 Games</title>
+<meta name="description" content="Personal results and player-stats tracker for Chelsea FC's last five matches.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+<style>
+  :root {
+    --che-blue: #034694;
+    --che-blue-dark: #022c5c;
+    --win: #1f9d55;
+    --draw: #c9a400;
+    --loss: #d64545;
+  }
+  body { padding-bottom: 2rem; }
+  header.site-head {
+    background: linear-gradient(135deg, var(--che-blue), var(--che-blue-dark));
+    color: #fff;
+    padding: 1.5rem 1rem 1.25rem;
+    border-radius: 0 0 1rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+  header.site-head h1 { color:#fff; margin-bottom:.25rem; font-size:1.5rem; }
+  header.site-head p { color:#dfe9f7; margin:0; font-size:.9rem; }
+  .form-strip { display:flex; gap:.4rem; margin-top:1rem; flex-wrap:wrap; }
+  .form-strip .badge { font-size:.85rem; }
+  .badge {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.75rem; height:1.75rem; border-radius:50%;
+    font-weight:700; color:#fff; font-size:.9rem; line-height:1;
+  }
+  .badge.small { width:1.3rem; height:1.3rem; font-size:.7rem; }
+  .res-w { background: var(--win); }
+  .res-d { background: var(--draw); }
+  .res-l { background: var(--loss); }
+
+  nav.match-nav {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--pico-background-color);
+    padding: .6rem .25rem;
+    display:flex; gap:.5rem; overflow-x:auto;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    margin-bottom: 1.25rem;
+  }
+  .nav-pill {
+    display:inline-flex; align-items:center; gap:.4rem;
+    white-space:nowrap; padding:.3rem .7rem; border-radius:999px;
+    background: var(--pico-card-background-color);
+    border:1px solid var(--pico-muted-border-color);
+    font-size:.8rem; text-decoration:none; color:var(--pico-color);
+  }
+
+  .match-card { scroll-margin-top: 3.5rem; }
+  .match-head { margin-bottom: .75rem; }
+  .match-meta { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin-bottom:.4rem; }
+  .match-date { font-weight:600; }
+  .match-venue { color: var(--pico-muted-color); font-size:.85rem; }
+  .scoreline { margin:0; font-size:1.25rem; }
+  .scoreline .score { font-weight:800; color: var(--che-blue); }
+
+  details.sub { border:1px solid var(--pico-muted-border-color); border-radius:.5rem; padding:.5rem .75rem; margin-bottom:.6rem; }
+  details.sub summary { cursor:pointer; font-weight:600; }
+  details.sub[open] summary { margin-bottom:.5rem; }
+
+  .stat-head { display:grid; grid-template-columns:1fr 1fr 1fr; text-align:center; font-weight:700; font-size:.8rem; margin-bottom:.5rem; color:var(--pico-muted-color); }
+  .stat-head span:nth-child(1) { text-align:left; color: var(--che-blue); }
+  .stat-head span:nth-child(3) { text-align:right; }
+  .stat-row { margin-bottom:.6rem; }
+  .stat-top { display:flex; justify-content:space-between; font-size:.85rem; font-weight:600; margin-bottom:.2rem; }
+  .stat-label { color:var(--pico-muted-color); font-weight:400; font-size:.78rem; }
+  .stat-bar { display:flex; height:8px; border-radius:4px; overflow:hidden; background:#e2e2e2; }
+  .stat-bar .bar-che { background: var(--che-blue); }
+  .stat-bar .bar-opp { background:#a9a9a9; }
+
+  ul.event-list { list-style:none; margin:0; padding:0; }
+  ul.event-list li { display:flex; gap:.5rem; padding:.35rem 0; border-bottom:1px dashed var(--pico-muted-border-color); font-size:.85rem; align-items:flex-start; }
+  ul.event-list li:last-child { border-bottom:none; }
+  .ev-min { font-weight:700; min-width:3.1rem; white-space:nowrap; color: var(--che-blue); }
+  .ev-icon { min-width:1.3rem; }
+  .event-opp .ev-min { color:#777; }
+
+  .leaders-wrap { display:grid; grid-template-columns:1fr; gap:1rem; }
+  @media (min-width:640px) { .leaders-wrap { grid-template-columns:1fr 1fr; } }
+  .leader-team { font-size:.85rem; margin:0 0 .4rem; padding-bottom:.2rem; border-bottom:2px solid; }
+  .leader-team.che { color: var(--che-blue); border-color: var(--che-blue); }
+  .leader-team.opp { color:#555; border-color:#999; }
+  table.leader-table { font-size:.8rem; margin:0; }
+  table.leader-table td { padding:.25rem .4rem; }
+
+  footer.site-foot { text-align:center; color:var(--pico-muted-color); font-size:.8rem; margin-top:2rem; }
+</style>
+</head>
+<body>
+<header class="site-head">
+  <h1>⚽ My Chelsea Tracker</h1>
+  <p>Results &amp; player stats for the last 5 Premier League matches &middot; snapshot taken Oct 14, 2026</p>
+  <div class="form-strip">
+    <span class="badge res-w" title="Win vs AFC Bournemouth (10 Oct)">W</span>
+    <span class="badge res-l" title="Loss at Brentford (18 Sep)">L</span>
+    <span class="badge res-d" title="Draw vs Hull City (12 Sep)">D</span>
+    <span class="badge res-l" title="Loss at Arsenal (6 Sep)">L</span>
+    <span class="badge res-w" title="Win vs Brighton (30 Aug)">W</span>
+  </div>
+</header>
+
+<main class="container">
+  <nav class="match-nav">
+        <a href="#m401878775" class="nav-pill"><span class="badge small res-w">W</span> vs AFC Bournemouth</a>
+        <a href="#m401879275" class="nav-pill"><span class="badge small res-l">L</span> vs Brentford</a>
+        <a href="#m401879283" class="nav-pill"><span class="badge small res-d">D</span> vs Hull City</a>
+        <a href="#m401879292" class="nav-pill"><span class="badge small res-l">L</span> vs Arsenal</a>
+        <a href="#m401879317" class="nav-pill"><span class="badge small res-w">W</span> vs Brighton &amp; Hove Albion</a>  </nav>
+
+
+      <article class="match-card" id="m401878775">
+        <header class="match-head">
+          <div class="match-meta">
+            <span class="badge res-w">W</span>
+            <span class="match-date">Oct 10, 2026</span>
+            <span class="match-venue">Stamford Bridge &middot; Home</span>
+          </div>
+          <h3 class="scoreline">Chelsea <span class="score">5</span> &ndash; <span class="score">1</span> AFC Bournemouth</h3>
+        </header>
+
+        <details class="sub" open>
+          <summary>Team stats</summary>
+          <div class="stat-head"><span>Chelsea</span><span></span><span>AFC Bournemouth</span></div>
+          <div class="stat-row">
+            <div class="stat-top"><span>49.9%</span><span class="stat-label">Possession</span><span>50.1%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:49.9%"></div><div class="bar-opp" style="width:50.1%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>10</span><span class="stat-label">Shots</span><span>9</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:52.6%"></div><div class="bar-opp" style="width:47.4%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>6</span><span class="stat-label">On Target</span><span>4</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:60.0%"></div><div class="bar-opp" style="width:40.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>80%</span><span class="stat-label">Pass Accuracy</span><span>80%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:50.0%"></div><div class="bar-opp" style="width:50.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>1</span><span class="stat-label">Corners</span><span>7</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:12.5%"></div><div class="bar-opp" style="width:87.5%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>7</span><span class="stat-label">Fouls</span><span>15</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:31.8%"></div><div class="bar-opp" style="width:68.2%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>10</span><span class="stat-label">Tackles Won</span><span>10</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:50.0%"></div><div class="bar-opp" style="width:50.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>9</span><span class="stat-label">Interceptions</span><span>13</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:40.9%"></div><div class="bar-opp" style="width:59.1%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>0</span><span class="stat-label">Yellow Cards</span><span>4</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:0.0%"></div><div class="bar-opp" style="width:100.0%"></div></div>
+          </div>
+        </details>
+
+        <details class="sub">
+          <summary>Goals &amp; cards timeline</summary>
+          <ul class="event-list">
+          <li class="event-che"><span class="ev-min">2&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 1, Bournemouth 0. Jordan Henderson (Chelsea) right footed shot from outside the box to the bottom left corner. Assisted by Cole Palmer.</span></li>
+          <li class="event-che"><span class="ev-min">3&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 2, Bournemouth 0. Morgan Rogers (Chelsea) right footed shot from the left side of the box to the top right corner. Assisted by Jordan Henderson.</span></li>
+          <li class="event-opp"><span class="ev-min">10&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Marcus Tavernier (Bournemouth) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">42&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Adrien Truffert (Bournemouth) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-che"><span class="ev-min">46&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 3, Bournemouth 0. João Pedro (Chelsea) right footed shot from the centre of the box to the top right corner. Assisted by Pedro Neto.</span></li>
+          <li class="event-opp"><span class="ev-min">51&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 3, Bournemouth 1. Evanilson (Bournemouth) right footed shot from very close range to the high centre of the goal following a corner.</span></li>
+          <li class="event-opp"><span class="ev-min">62&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Tyler Adams (Bournemouth) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-che"><span class="ev-min">67&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 4, Bournemouth 1. João Pedro (Chelsea) right footed shot from the centre of the box to the top left corner. Assisted by Pep Chavarría with a cross.</span></li>
+          <li class="event-opp"><span class="ev-min">69&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Ryan Christie (Bournemouth) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-che"><span class="ev-min">70&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 5, Bournemouth 1. Jordan Henderson (Chelsea) from a free kick with a right footed shot to the top right corner.</span></li>
+          </ul>
+        </details>
+
+        <details class="sub">
+          <summary>Standout players</summary>
+          <div class="leaders-wrap">
+          <div class="leader-col">
+            <h4 class="leader-team che">Chelsea</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Jordan Henderson</td><td>3</td></tr>
+                <tr><td>Accurate Passes</td><td>Levi Colwill</td><td>69</td></tr>
+                <tr><td>Defensive Interventions</td><td>Maxence Lacroix</td><td>12</td></tr>
+                <tr><td>Saves</td><td>Emiliano Martínez</td><td>3</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="leader-col">
+            <h4 class="leader-team opp">AFC Bournemouth</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Evanilson</td><td>3</td></tr>
+                <tr><td>Accurate Passes</td><td>António Silva</td><td>66</td></tr>
+                <tr><td>Defensive Interventions</td><td>James Hill</td><td>13</td></tr>
+                <tr><td>Saves</td><td>Djordje Petrovic</td><td>1</td></tr>
+              </tbody>
+            </table>
+          </div>
+          </div>
+        </details>
+      </article>
+
+      <article class="match-card" id="m401879275">
+        <header class="match-head">
+          <div class="match-meta">
+            <span class="badge res-l">L</span>
+            <span class="match-date">Sep 18, 2026</span>
+            <span class="match-venue">Gtech Community Stadium &middot; Away</span>
+          </div>
+          <h3 class="scoreline">Brentford <span class="score">3</span> &ndash; <span class="score">0</span> Chelsea</h3>
+        </header>
+
+        <details class="sub" open>
+          <summary>Team stats</summary>
+          <div class="stat-head"><span>Chelsea</span><span></span><span>Brentford</span></div>
+          <div class="stat-row">
+            <div class="stat-top"><span>59.4%</span><span class="stat-label">Possession</span><span>40.6%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:59.4%"></div><div class="bar-opp" style="width:40.6%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>12</span><span class="stat-label">Shots</span><span>13</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:48.0%"></div><div class="bar-opp" style="width:52.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>2</span><span class="stat-label">On Target</span><span>6</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:25.0%"></div><div class="bar-opp" style="width:75.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>90%</span><span class="stat-label">Pass Accuracy</span><span>80%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:52.9%"></div><div class="bar-opp" style="width:47.1%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>12</span><span class="stat-label">Corners</span><span>4</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:75.0%"></div><div class="bar-opp" style="width:25.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>7</span><span class="stat-label">Fouls</span><span>10</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:41.2%"></div><div class="bar-opp" style="width:58.8%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>14</span><span class="stat-label">Tackles Won</span><span>7</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:66.7%"></div><div class="bar-opp" style="width:33.3%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>13</span><span class="stat-label">Interceptions</span><span>7</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:65.0%"></div><div class="bar-opp" style="width:35.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>0</span><span class="stat-label">Yellow Cards</span><span>2</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:0.0%"></div><div class="bar-opp" style="width:100.0%"></div></div>
+          </div>
+        </details>
+
+        <details class="sub">
+          <summary>Goals &amp; cards timeline</summary>
+          <ul class="event-list">
+          <li class="event-opp"><span class="ev-min">83&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Brentford 2, Chelsea 0. Igor Thiago (Brentford) right footed shot from the centre of the box to the top right corner following a fast break.</span></li>
+          <li class="event-opp"><span class="ev-min">84&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Igor Thiago (Brentford) is shown the yellow card for excessive celebration.</span></li>
+          <li class="event-opp"><span class="ev-min">85&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Mamadou Sangaré (Brentford) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">90&#x27;+4&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Brentford 3, Chelsea 0. Fábio Carvalho (Brentford) right footed shot from the right side of the six yard box to the top right corner.</span></li>
+          </ul>
+        </details>
+
+        <details class="sub">
+          <summary>Standout players</summary>
+          <div class="leaders-wrap">
+          <div class="leader-col">
+            <h4 class="leader-team che">Chelsea</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Morgan Rogers</td><td>4</td></tr>
+                <tr><td>Accurate Passes</td><td>Jordan Henderson</td><td>65</td></tr>
+                <tr><td>Defensive Interventions</td><td>Wesley Fofana</td><td>16</td></tr>
+                <tr><td>Saves</td><td>Emiliano Martínez</td><td>3</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="leader-col">
+            <h4 class="leader-team opp">Brentford</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Kevin Schade</td><td>3</td></tr>
+                <tr><td>Accurate Passes</td><td>Kristoffer Ajer</td><td>43</td></tr>
+                <tr><td>Defensive Interventions</td><td>Jannik Schuster</td><td>16</td></tr>
+                <tr><td>Saves</td><td>Caoimhín Kelleher</td><td>2</td></tr>
+              </tbody>
+            </table>
+          </div>
+          </div>
+        </details>
+      </article>
+
+      <article class="match-card" id="m401879283">
+        <header class="match-head">
+          <div class="match-meta">
+            <span class="badge res-d">D</span>
+            <span class="match-date">Sep 12, 2026</span>
+            <span class="match-venue">Stamford Bridge &middot; Home</span>
+          </div>
+          <h3 class="scoreline">Chelsea <span class="score">2</span> &ndash; <span class="score">2</span> Hull City</h3>
+        </header>
+
+        <details class="sub" open>
+          <summary>Team stats</summary>
+          <div class="stat-head"><span>Chelsea</span><span></span><span>Hull City</span></div>
+          <div class="stat-row">
+            <div class="stat-top"><span>67.8%</span><span class="stat-label">Possession</span><span>32.2%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:67.8%"></div><div class="bar-opp" style="width:32.2%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>12</span><span class="stat-label">Shots</span><span>13</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:48.0%"></div><div class="bar-opp" style="width:52.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>7</span><span class="stat-label">On Target</span><span>5</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:58.3%"></div><div class="bar-opp" style="width:41.7%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>90%</span><span class="stat-label">Pass Accuracy</span><span>70%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:56.2%"></div><div class="bar-opp" style="width:43.8%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>11</span><span class="stat-label">Corners</span><span>4</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:73.3%"></div><div class="bar-opp" style="width:26.7%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>7</span><span class="stat-label">Fouls</span><span>12</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:36.8%"></div><div class="bar-opp" style="width:63.2%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>3</span><span class="stat-label">Tackles Won</span><span>9</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:25.0%"></div><div class="bar-opp" style="width:75.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>13</span><span class="stat-label">Interceptions</span><span>9</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:59.1%"></div><div class="bar-opp" style="width:40.9%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>1</span><span class="stat-label">Yellow Cards</span><span>5</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:16.7%"></div><div class="bar-opp" style="width:83.3%"></div></div>
+          </div>
+        </details>
+
+        <details class="sub">
+          <summary>Goals &amp; cards timeline</summary>
+          <ul class="event-list">
+          <li class="event-che"><span class="ev-min">7&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 1, Hull City 0. Morgan Rogers (Chelsea) left footed shot from the left side of the box to the bottom left corner. Assisted by João Pedro following a fast break.</span></li>
+          <li class="event-opp"><span class="ev-min">17&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Oliver McBurnie (Hull City) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">28&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 1, Hull City 1. Mohamed Belloumi (Hull City) left footed shot from the centre of the box to the bottom right corner. Assisted by Ryan Giles with a cross.</span></li>
+          <li class="event-opp"><span class="ev-min">34&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 1, Hull City 2. Mohamed Belloumi (Hull City) left footed shot from outside the box to the bottom left corner. Assisted by Oliver McBurnie following a corner.</span></li>
+          <li class="event-opp"><span class="ev-min">50&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">John Egan (Hull City) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">52&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Matt Crooks (Hull City) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-che"><span class="ev-min">66&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 2, Hull City 2. João Pedro (Chelsea) left footed shot from the centre of the box to the top left corner. Assisted by Cole Palmer.</span></li>
+          <li class="event-che"><span class="ev-min">80&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Valentín Barco (Chelsea) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">88&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Tim Iroegbunam (Hull City) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">90&#x27;+6&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Brooke Norton-Cuffy (Hull City) is shown the yellow card for a bad foul.</span></li>
+          </ul>
+        </details>
+
+        <details class="sub">
+          <summary>Standout players</summary>
+          <div class="leaders-wrap">
+          <div class="leader-col">
+            <h4 class="leader-team che">Chelsea</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Cole Palmer</td><td>3</td></tr>
+                <tr><td>Accurate Passes</td><td>Reece James</td><td>80</td></tr>
+                <tr><td>Defensive Interventions</td><td>Levi Colwill</td><td>12</td></tr>
+                <tr><td>Saves</td><td>Emiliano Martínez</td><td>3</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="leader-col">
+            <h4 class="leader-team opp">Hull City</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Mohamed Belloumi</td><td>3</td></tr>
+                <tr><td>Accurate Passes</td><td>John Egan</td><td>23</td></tr>
+                <tr><td>Defensive Interventions</td><td>John Egan</td><td>14</td></tr>
+                <tr><td>Saves</td><td>Konstantinos Tzolakis</td><td>5</td></tr>
+              </tbody>
+            </table>
+          </div>
+          </div>
+        </details>
+      </article>
+
+      <article class="match-card" id="m401879292">
+        <header class="match-head">
+          <div class="match-meta">
+            <span class="badge res-l">L</span>
+            <span class="match-date">Sep 6, 2026</span>
+            <span class="match-venue">Emirates Stadium &middot; Away</span>
+          </div>
+          <h3 class="scoreline">Arsenal <span class="score">2</span> &ndash; <span class="score">1</span> Chelsea</h3>
+        </header>
+
+        <details class="sub" open>
+          <summary>Team stats</summary>
+          <div class="stat-head"><span>Chelsea</span><span></span><span>Arsenal</span></div>
+          <div class="stat-row">
+            <div class="stat-top"><span>45.4%</span><span class="stat-label">Possession</span><span>54.6%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:45.4%"></div><div class="bar-opp" style="width:54.6%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>13</span><span class="stat-label">Shots</span><span>16</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:44.8%"></div><div class="bar-opp" style="width:55.2%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>5</span><span class="stat-label">On Target</span><span>9</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:35.7%"></div><div class="bar-opp" style="width:64.3%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>80%</span><span class="stat-label">Pass Accuracy</span><span>80%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:50.0%"></div><div class="bar-opp" style="width:50.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>3</span><span class="stat-label">Corners</span><span>5</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:37.5%"></div><div class="bar-opp" style="width:62.5%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>16</span><span class="stat-label">Fouls</span><span>13</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:55.2%"></div><div class="bar-opp" style="width:44.8%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>6</span><span class="stat-label">Tackles Won</span><span>5</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:54.5%"></div><div class="bar-opp" style="width:45.5%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>8</span><span class="stat-label">Interceptions</span><span>9</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:47.1%"></div><div class="bar-opp" style="width:52.9%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>4</span><span class="stat-label">Yellow Cards</span><span>2</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:66.7%"></div><div class="bar-opp" style="width:33.3%"></div></div>
+          </div>
+        </details>
+
+        <details class="sub">
+          <summary>Goals &amp; cards timeline</summary>
+          <ul class="event-list">
+          <li class="event-che"><span class="ev-min">2&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Arsenal 0, Chelsea 1. Morgan Rogers (Chelsea) right footed shot from outside the box to the bottom left corner. Assisted by Jorrel Hato with a headed pass following a set piece situation.</span></li>
+          <li class="event-che"><span class="ev-min">14&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">João Pedro (Chelsea) is shown the yellow card.</span></li>
+          <li class="event-opp"><span class="ev-min">25&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Arsenal 1, Chelsea 1. Kai Havertz (Arsenal) left footed shot from outside the box to the bottom right corner. Assisted by Declan Rice.</span></li>
+          <li class="event-che"><span class="ev-min">45&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Cole Palmer (Chelsea) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">50&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Arsenal 2, Chelsea 1. Martin Ødegaard (Arsenal) left footed shot from the centre of the box to the high centre of the goal. Assisted by Christos Tzolis following a fast break.</span></li>
+          <li class="event-opp"><span class="ev-min">58&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Christos Tzolis (Arsenal) is shown the yellow card.</span></li>
+          <li class="event-che"><span class="ev-min">58&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Maxence Lacroix (Chelsea) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-che"><span class="ev-min">83&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Morgan Rogers (Chelsea) is shown the yellow card.</span></li>
+          <li class="event-opp"><span class="ev-min">90&#x27;+5&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Mikel Merino (Arsenal) is shown the yellow card.</span></li>
+          </ul>
+        </details>
+
+        <details class="sub">
+          <summary>Standout players</summary>
+          <div class="leaders-wrap">
+          <div class="leader-col">
+            <h4 class="leader-team che">Chelsea</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Cole Palmer</td><td>3</td></tr>
+                <tr><td>Accurate Passes</td><td>Wesley Fofana</td><td>43</td></tr>
+                <tr><td>Defensive Interventions</td><td>Wesley Fofana</td><td>18</td></tr>
+                <tr><td>Saves</td><td>Emiliano Martínez</td><td>8</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="leader-col">
+            <h4 class="leader-team opp">Arsenal</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Bukayo Saka</td><td>4</td></tr>
+                <tr><td>Accurate Passes</td><td>Declan Rice</td><td>62</td></tr>
+                <tr><td>Defensive Interventions</td><td>Ezri Konsa</td><td>11</td></tr>
+                <tr><td>Saves</td><td>David Raya</td><td>4</td></tr>
+              </tbody>
+            </table>
+          </div>
+          </div>
+        </details>
+      </article>
+
+      <article class="match-card" id="m401879317">
+        <header class="match-head">
+          <div class="match-meta">
+            <span class="badge res-w">W</span>
+            <span class="match-date">Aug 30, 2026</span>
+            <span class="match-venue">Stamford Bridge &middot; Home</span>
+          </div>
+          <h3 class="scoreline">Chelsea <span class="score">4</span> &ndash; <span class="score">3</span> Brighton &amp; Hove Albion</h3>
+        </header>
+
+        <details class="sub" open>
+          <summary>Team stats</summary>
+          <div class="stat-head"><span>Chelsea</span><span></span><span>Brighton &amp; Hove Albion</span></div>
+          <div class="stat-row">
+            <div class="stat-top"><span>25.6%</span><span class="stat-label">Possession</span><span>74.4%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:25.6%"></div><div class="bar-opp" style="width:74.4%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>17</span><span class="stat-label">Shots</span><span>15</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:53.1%"></div><div class="bar-opp" style="width:46.9%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>6</span><span class="stat-label">On Target</span><span>6</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:50.0%"></div><div class="bar-opp" style="width:50.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>70%</span><span class="stat-label">Pass Accuracy</span><span>90%</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:43.8%"></div><div class="bar-opp" style="width:56.2%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>4</span><span class="stat-label">Corners</span><span>7</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:36.4%"></div><div class="bar-opp" style="width:63.6%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>6</span><span class="stat-label">Fouls</span><span>12</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:33.3%"></div><div class="bar-opp" style="width:66.7%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>7</span><span class="stat-label">Tackles Won</span><span>7</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:50.0%"></div><div class="bar-opp" style="width:50.0%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>9</span><span class="stat-label">Interceptions</span><span>4</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:69.2%"></div><div class="bar-opp" style="width:30.8%"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-top"><span>1</span><span class="stat-label">Yellow Cards</span><span>3</span></div>
+            <div class="stat-bar"><div class="bar-che" style="width:25.0%"></div><div class="bar-opp" style="width:75.0%"></div></div>
+          </div>
+        </details>
+
+        <details class="sub">
+          <summary>Goals &amp; cards timeline</summary>
+          <ul class="event-list">
+          <li class="event-che"><span class="ev-min">4&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 1, Brighton and Hove Albion 0. Roméo Lavia (Chelsea) right footed shot from very close range to the bottom left corner following a corner.</span></li>
+          <li class="event-che"><span class="ev-min">14&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 2, Brighton and Hove Albion 0. Pedro Neto (Chelsea) right footed shot from the centre of the box to the centre of the goal. Assisted by Morgan Rogers.</span></li>
+          <li class="event-che"><span class="ev-min">32&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 3, Brighton and Hove Albion 0. João Pedro (Chelsea) right footed shot from the centre of the box to the bottom left corner. Assisted by Jorrel Hato following a fast break.</span></li>
+          <li class="event-opp"><span class="ev-min">35&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 3, Brighton and Hove Albion 1. Malick Yalcouyé (Brighton and Hove Albion) right footed shot from the centre of the box to the top left corner.</span></li>
+          <li class="event-che"><span class="ev-min">55&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Wesley Fofana (Chelsea) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">63&#x27;</span><span class="ev-icon">⚽ (OG)</span><span class="ev-text">Own Goal by João Pedro, Chelsea. Chelsea 3, Brighton and Hove Albion 2.</span></li>
+          <li class="event-opp"><span class="ev-min">70&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Lewis Dunk (Brighton and Hove Albion) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-che"><span class="ev-min">74&#x27;</span><span class="ev-icon">⚽</span><span class="ev-text">Goal! Chelsea 4, Brighton and Hove Albion 2. Cole Palmer (Chelsea) left footed shot from outside the box to the bottom left corner. Assisted by João Pedro.</span></li>
+          <li class="event-opp"><span class="ev-min">89&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Olivier Boscagli (Brighton and Hove Albion) is shown the yellow card for a bad foul.</span></li>
+          <li class="event-opp"><span class="ev-min">90&#x27;+1&#x27;</span><span class="ev-icon">🟨</span><span class="ev-text">Costinha (Brighton and Hove Albion) is shown the yellow card for a bad foul.</span></li>
+          </ul>
+        </details>
+
+        <details class="sub">
+          <summary>Standout players</summary>
+          <div class="leaders-wrap">
+          <div class="leader-col">
+            <h4 class="leader-team che">Chelsea</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>João Pedro</td><td>5</td></tr>
+                <tr><td>Accurate Passes</td><td>João Pedro</td><td>15</td></tr>
+                <tr><td>Defensive Interventions</td><td>Maxence Lacroix</td><td>10</td></tr>
+                <tr><td>Saves</td><td>Emiliano Martínez</td><td>4</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="leader-col">
+            <h4 class="leader-team opp">Brighton &amp; Hove Albion</h4>
+            <table class="leader-table">
+              <tbody>
+                <tr><td>Total Shots</td><td>Diego Gómez</td><td>5</td></tr>
+                <tr><td>Accurate Passes</td><td>Luka Vuskovic</td><td>88</td></tr>
+                <tr><td>Defensive Interventions</td><td>Luka Vuskovic</td><td>9</td></tr>
+                <tr><td>Saves</td><td>Bart Verbruggen</td><td>1</td></tr>
+              </tbody>
+            </table>
+          </div>
+          </div>
+        </details>
+      </article>
+  <footer class="site-foot">
+    <p>Data: match stats, goals, cards and standout-player leaders pulled from ESPN's public soccer data feed for Chelsea FC's last 5 Premier League fixtures. Snapshot taken Oct 14, 2026 — refresh by asking for an updated pull.</p>
+  </footer>
+</main>
+</body>
+</html>
